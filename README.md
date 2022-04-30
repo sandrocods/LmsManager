@@ -9,6 +9,8 @@ Simple project to manage Moodle LMS account made with Python Basic Object Orient
 | Get Profile Details | ✅ |
 | Get Activity Task | ✅ |
 | Get Course List| ✅ |
+| Auto Save Cookies | ✅ |
+| Auto Login with Cookies | ✅ |
 | Add Telegram Notification | Coming Soon |
 | Add CronJobs Automatic Message | Coming Soon |
 
