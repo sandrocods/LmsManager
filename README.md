@@ -28,6 +28,7 @@ Git Clone this project
 use Example.py
 
 ```Python
+from src.LmsManager import *
 try:
     lmsm = LmsManager(username="", password="")
     lmsm.Login()
