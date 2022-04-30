@@ -21,7 +21,7 @@ Git Clone this project
 
 ```bash
   cd lmsmanager
-  pip install .\requirements.txt
+  pip install -r .\requirements.txt
 ```
     
 # Usage/Examples
