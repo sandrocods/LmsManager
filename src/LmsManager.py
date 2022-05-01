@@ -1,5 +1,6 @@
 import re
 import json
+import time
 import requests
 import humanize
 from src.Exception import *
@@ -107,11 +108,11 @@ class LmsManager:
             try:
                 self.moodle_session = login.cookies.get_dict()['MoodleSession']
                 self.sesskey = re.findall(
-                                pattern='<input type="hidden" name="sesskey" value="(.*?)">',
-                                string=main_dashbord.text)[0]
+                    pattern='<input type="hidden" name="sesskey" value="(.*?)">',
+                    string=main_dashbord.text)[0]
                 self.login_name = re.findall(
-                                pattern='<span class="usertext mr-1">(.*?)</span>',
-                                string=main_dashbord.text)[0]
+                    pattern='<span class="usertext mr-1">(.*?)</span>',
+                    string=main_dashbord.text)[0]
 
                 self.headers = headers
                 self.id_user = re.findall(pattern="testsession=(\d+)", string=login.headers['Location'])[0]
@@ -174,27 +175,36 @@ class LmsManager:
         except CookieExpire:
             raise CookieExpire
         finally:
-            data_activity = []
-            current_ts = datetime.now()
-            end_ts = current_ts + timedelta(days=end_time)
+            try:
+                data_activity = []
+                current_ts = datetime.now()
+                end_ts = current_ts + timedelta(days=end_time)
 
-            get_activity = requests.post(
-                url=endPoint + f"lib/ajax/service.php?sesskey={self.sesskey}&info=core_calendar_get_action_events_by_timesort",
-                data='[{"index":0,"methodname":"core_calendar_get_action_events_by_timesort","args":{"limitnum":26,"timesortfrom":' + str(current_ts.timestamp()).split('.')[0] + ',"timesortto":' + str(end_ts.timestamp()).split('.')[0] + ',"limittononsuspendedevents":true}}]',
-                headers=self.headers
-            )
+                get_activity = requests.post(
+                    url=endPoint + f"lib/ajax/service.php?sesskey={self.sesskey}&info=core_calendar_get_action_events_by_timesort",
+                    data='[{"index":0,"methodname":"core_calendar_get_action_events_by_timesort","args":{"limitnum":26,"timesortfrom":' +
+                         str(current_ts.timestamp()).split('.')[0] + ',"timesortto":' +
+                         str(end_ts.timestamp()).split('.')[0] + ',"limittononsuspendedevents":true}}]',
+                    headers=self.headers
+                )
 
-            json_decode = get_activity.json()
-            if not json_decode[0]['error']:
-                for data in json_decode[0]['data']['events']:
-                    data_activity.append({
-                        'full_name': data['course']['fullnamedisplay'],
-                        'name': data['name'],
-                        'deadline': datetime.fromtimestamp(data['timeusermidnight']).strftime('%d-%m-%y %H:%M:%S'),
-                        'deadline_timestamp': datetime.fromtimestamp(data['timeusermidnight'])
-                    })
-                return data_activity
-            else:
+                json_decode = get_activity.json()
+                if not json_decode[0]['error']:
+                    for data in json_decode[0]['data']['events']:
+                        data_activity.append({
+                            'full_name': data['course']['fullnamedisplay'],
+                            'name': data['name'],
+                            'deadline': datetime.fromtimestamp(data['timeusermidnight']).strftime('%d-%m-%y %H:%M:%S'),
+                            'deadline_timestamp': datetime.fromtimestamp(data['timeusermidnight'])
+                        })
+                    return data_activity
+                else:
+                    raise GetActivityError
+            except ConnectionRefusedError:
+                time.sleep(2)
+                raise GetActivityError
+            except ConnectionError:
+                time.sleep(2)
                 raise GetActivityError
 
     def get_course(self):
@@ -203,21 +213,29 @@ class LmsManager:
         except CookieExpire:
             raise CookieExpire
         finally:
-            course_list = []
-            get_course = requests.post(
-                url=endPoint + f"lib/ajax/service.php?sesskey={self.sesskey}&info=core_course_get_enrolled_courses_by_timeline_classification",
-                data='[{"index":0,"methodname":"core_course_get_enrolled_courses_by_timeline_classification","args":{"offset":0,"limit":0,"classification":"all","sort":"shortname","customfieldname":"","customfieldvalue":""}}]',
-                headers=self.headers
-            )
+            try:
+                course_list = []
+                get_course = requests.post(
+                    url=endPoint + f"lib/ajax/service.php?sesskey={self.sesskey}&info=core_course_get_enrolled_courses_by_timeline_classification",
+                    data='[{"index":0,"methodname":"core_course_get_enrolled_courses_by_timeline_classification","args":{"offset":0,"limit":0,"classification":"all","sort":"shortname","customfieldname":"","customfieldvalue":""}}]',
+                    headers=self.headers
+                )
 
-            json_decode = get_course.json()
-            if not json_decode[0]['error']:
-                for data in json_decode[0]['data']['courses']:
-                    course_list.append({
-                        'full_name': data['fullnamedisplay'],
-                    })
-                return course_list
-            else:
+                json_decode = get_course.json()
+                if not json_decode[0]['error']:
+                    for data in json_decode[0]['data']['courses']:
+                        course_list.append({
+                            'full_name': data['fullnamedisplay'],
+                        })
+                    return course_list
+                else:
+                    raise GetActivityError
+
+            except ConnectionRefusedError:
+                time.sleep(2)
+                raise GetActivityError
+            except ConnectionError:
+                time.sleep(2)
                 raise GetActivityError
 
     def get_profile(self):
@@ -231,18 +249,26 @@ class LmsManager:
         except CookieExpire:
             raise CookieExpire
         finally:
-            get_profile = requests.get(url=endPoint + f"user/profile.php?id={self.id_user}", headers=self.headers)
-            parse = BeautifulSoup(get_profile.text, 'html.parser')
-            if not parse.find('h1').text:
+            try:
+
+                get_profile = requests.get(url=endPoint + f"user/profile.php?id={self.id_user}", headers=self.headers)
+                parse = BeautifulSoup(get_profile.text, 'html.parser')
+                if not parse.find('h1').text:
+                    raise GetActivityError
+                else:
+                    return {
+                        'full_name': parse.find('h1').text,
+                        'email': parse.find('dd').findNext('a').text,
+                        'first_access': parse.find('li', {"class": "contentnode"}).findNext('dt',
+                                                                                            text='First access to site').findNext(
+                            'dd').text,
+                        'last_access': parse.find('li', {"class": "contentnode"}).findNext('dt',
+                                                                                           text='Last access to site').findNext(
+                            'dd').text
+                    }
+            except ConnectionRefusedError:
+                time.sleep(2)
                 raise GetActivityError
-            else:
-                return {
-                    'full_name': parse.find('h1').text,
-                    'email': parse.find('dd').findNext('a').text,
-                    'first_access': parse.find('li', {"class": "contentnode"}).findNext('dt',
-                                                                                        text='First access to site').findNext(
-                        'dd').text,
-                    'last_access': parse.find('li', {"class": "contentnode"}).findNext('dt',
-                                                                                       text='Last access to site').findNext(
-                        'dd').text
-                }
+            except ConnectionError:
+                time.sleep(2)
+                raise GetActivityError
