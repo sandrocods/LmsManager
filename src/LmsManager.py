@@ -75,6 +75,9 @@ class LmsManager:
                     pass
 
     def __process_login(self):
+        """
+        The above function is a function to login to the moodle website.
+        """
         get_login = requests.get(url=endPoint)
         login_token = \
             re.findall(pattern='<input type="hidden" name="logintoken" value="(.*?)" />',
