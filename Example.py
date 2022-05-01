@@ -36,3 +36,6 @@ except LoginError as e:
 
 except GetActivityError as e:
     print(e)
+
+except KeyboardInterrupt:
+    pass
