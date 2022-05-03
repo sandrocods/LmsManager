@@ -7,7 +7,9 @@ from src.Exception import *
 from os.path import exists
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
+from apscheduler.schedulers.blocking import BlockingScheduler
 
+scheduler = BlockingScheduler()
 humanize.i18n.activate("id_ID")
 endPoint = "https://lms.ittelkom-pwt.ac.id/"
 
@@ -15,6 +17,9 @@ endPoint = "https://lms.ittelkom-pwt.ac.id/"
 class LmsManager:
 
     def __init__(self, username, password):
+
+        self.chat_id = None
+        self.bot_token = None
         self.id_user = None
         self.headers = None
         self.login_name = None
@@ -37,7 +42,83 @@ class LmsManager:
                 )
             LmsManager.Login(self)
 
+    def sendActivityToTelegram(self):
+        """
+        It gets the activity of the user and sends it to the telegram bot
+        """
+        build_message = ""
+        getActivity = self.Get_activity(
+            end_time=30
+        )
+        for i in range(len(getActivity)):
+            build_message += "Task Number : {task_number}\n\n" \
+                             "Lesson Name : {lession_name}\n" \
+                             "Task Name : {task_name}\n" \
+                             "Deadline : {deadline}\n".format(
+                task_number=i,
+                lession_name=getActivity[i]['full_name'],
+                task_name=getActivity[i]['name'],
+                deadline=getActivity[i]['deadline']
+            )
+        self.send_notification(
+            bot_token=self.bot_token,
+            chat_id=self.chat_id,
+            message=build_message
+        )
+        del build_message
+
+    def ScheduleTask(self, time_exec=10, bot_token=None, chat_id=None):
+        """
+        It schedules a task to be executed every 10 seconds.
+
+        :param time_exec: The time interval in seconds between each notification, defaults to 10 (optional)
+        :param bot_token: The token of the bot you created
+        :param chat_id: The chat id of the telegram channel you want to send the message to
+        """
+
+        self.bot_token = bot_token
+        self.chat_id = chat_id
+
+        if not (chat_id and bot_token):
+            raise SendNotification
+
+        scheduler.add_job(
+            func=self.sendActivityToTelegram,
+            trigger='interval',
+            seconds=time_exec,
+            id="schedule_send_task"
+        )
+        scheduler.start()
+
+    @staticmethod
+    def send_notification(bot_token, chat_id, message):
+        """
+        The above function sends a message to a telegram user.
+
+        :param bot_token: The token of the bot you created
+        :param chat_id: The chat ID of the chat you want to send the message to
+        :param message: The message you want to send
+        :return: A dictionary with two keys: status and msg.
+        """
+        request_send_message = requests.post(
+            url="https://api.telegram.org/bot" + str(bot_token) + "/sendMessage",
+            data={'chat_id': chat_id, 'text': message}
+        )
+        if request_send_message.json()['ok']:
+            return {
+                'status': True,
+                'msg': 'Success Send Message'
+            }
+        else:
+            return {
+                'status': False,
+                'msg': 'Failed Send Message'
+            }
+
     def Save_cookie(self):
+        """
+        It saves the user's cookie to a file
+        """
         with open("./Cookie/user_cookie.json", "w") as save:
             save.write(
                 json.dumps(
@@ -51,9 +132,15 @@ class LmsManager:
             )
 
     def check_cookie(self):
-        if exists("./Cookie/user_cookie.json"):
-            with open('./Cookie/user_cookie.json', 'r') as openfile:
-                json_object = json.load(openfile)
+        """
+        If the file exists, open it and load the json object, then assign the moodle_session value to the variable
+        self.moodle_session, then create a header with the moodle_session value, then check if the user is still active by
+        sending a request to the endpoint, if the user is not active, raise the CookieExpire exception
+        """
+        try:
+            if exists("./Cookie/user_cookie.json"):
+                with open('./Cookie/user_cookie.json', 'r') as openfile:
+                    json_object = json.load(openfile)
 
                 self.moodle_session = json_object['moodle_session']
 
@@ -73,6 +160,8 @@ class LmsManager:
                     raise CookieExpire
                 else:
                     pass
+        except json.JSONDecodeError:
+            raise CookieExpire
 
     def __process_login(self):
         """
@@ -135,9 +224,9 @@ class LmsManager:
 
         if exists("./Cookie/user_cookie.json"):
             with open('./Cookie/user_cookie.json', 'r') as openfile:
-                json_object = json.load(openfile)
 
                 try:
+                    json_object = json.load(openfile)
                     self.moodle_session = json_object['moodle_session']
                     self.sesskey = json_object['sesskey']
                     self.headers = {
@@ -159,6 +248,8 @@ class LmsManager:
 
                 except KeyError:
                     self.__process_login()
+                except json.JSONDecodeError:
+                    self.__process_login()
         else:
             with open('./Cookie/user_cookie.json', 'r') as openfile:
                 json_object = json.load(openfile)
@@ -175,9 +266,6 @@ class LmsManager:
 
         try:
             self.check_cookie()
-        except CookieExpire:
-            raise CookieExpire
-        finally:
             try:
                 data_activity = []
                 current_ts = datetime.now()
@@ -209,13 +297,12 @@ class LmsManager:
             except ConnectionError:
                 time.sleep(2)
                 raise GetActivityError
+        except CookieExpire:
+            raise CookieExpire
 
     def get_course(self):
         try:
             self.check_cookie()
-        except CookieExpire:
-            raise CookieExpire
-        finally:
             try:
                 course_list = []
                 get_course = requests.post(
@@ -240,6 +327,8 @@ class LmsManager:
             except ConnectionError:
                 time.sleep(2)
                 raise GetActivityError
+        except CookieExpire:
+            raise CookieExpire
 
     def get_profile(self):
         """
@@ -249,9 +338,6 @@ class LmsManager:
         """
         try:
             self.check_cookie()
-        except CookieExpire:
-            raise CookieExpire
-        finally:
             try:
 
                 get_profile = requests.get(url=endPoint + f"user/profile.php?id={self.id_user}", headers=self.headers)
@@ -275,3 +361,6 @@ class LmsManager:
             except ConnectionError:
                 time.sleep(2)
                 raise GetActivityError
+
+        except CookieExpire:
+            raise CookieExpire

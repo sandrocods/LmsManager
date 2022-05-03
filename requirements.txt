@@ -2,3 +2,4 @@ requests~=2.27.1
 humanize~=4.0.0
 beautifulsoup4~=4.11.1
 setuptools~=60.2.0
+APScheduler~=3.9.1

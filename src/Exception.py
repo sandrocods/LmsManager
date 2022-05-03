@@ -13,3 +13,8 @@ class GetActivityError(Exception):
 class CookieExpire(Exception):
     def __init__(self):
         super().__init__(f"Cookie Expire Login Again")
+
+
+class SendNotification(Exception):
+    def __init__(self):
+        super().__init__(f"Bot Token and Chat ID can't None")

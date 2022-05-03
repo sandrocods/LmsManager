@@ -31,10 +31,24 @@ try:
     for course in lmsm.get_course():
         print("Course Name : {nama_course}".format(nama_course=course['full_name']))
 
+    print("Starting Send Notification ")
+    # this process will stop the next process because it uses the Blocking Scheduler
+    lmsm.ScheduleTask(
+        bot_token="",
+        chat_id="",
+        time_exec=120
+    )
+
 except LoginError as e:
     print(e)
 
 except GetActivityError as e:
+    print(e)
+
+except SendNotification as e:
+    print(e)
+
+except CookieExpire as e:
     print(e)
 
 except KeyboardInterrupt:
