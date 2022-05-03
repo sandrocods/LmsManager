@@ -4,15 +4,13 @@
 Simple project to manage Moodle LMS account made with Python Basic Object Oriented
 # Feature
 
-| Feature             | Available                                                                |
-| ----------------- | ------------------------------------------------------------------ |
-| Get Profile Details | ✅ |
-| Get Activity Task | ✅ |
-| Get Course List| ✅ |
-| Auto Save Cookies | ✅ |
-| Auto Login with Cookies | ✅ |
-| Add Telegram Notification | Coming Soon |
-| Add CronJobs Automatic Message | Coming Soon |
+| Feature             | Available                                                                | Added At                                                                |
+| ----------------- | ------------------------------------------------------------------ |------------------------------------------------------------------ |
+| Get Profile Details | ✅ | Project Release|
+| Get Activity Task | ✅ | Project Release|
+| Get Course List| ✅ | Project Release|
+| Add Telegram Notification | ✅ |05-04-2022|
+| Add CronJobs Automatic Message | ✅ |05-04-2022|
 
 
 # Installation
@@ -21,14 +19,13 @@ Git Clone this project
 
 ```bash
   cd lmsmanager
-  pip install -r .\requirements.txt
+  pip install .\requirements.txt
 ```
     
 # Usage/Examples
 use Example.py
 
 ```Python
-from src.LmsManager import *
 try:
     lmsm = LmsManager(username="", password="")
     lmsm.Login()
@@ -46,12 +43,30 @@ except GetActivityError as e:
 
 ```
 
+Example for Send Notification Telegram
+```Python
+try:
+    lmsm = LmsManager(username="", password="")
+    lmsm.Login()
 
+    lmsm.ScheduleTask(
+        bot_token="",
+        chat_id="",
+        time_exec=120
+    )
+    
+except LoginError as e:
+    print(e)
+
+except GetActivityError as e:
+    print(e)
+
+```
 ## API Reference
 
-#### Define Class Function
+#### Define python Function
 
-```Python
+```python
   lmsm = LmsManager(username="", password="")
 ```
 
@@ -62,7 +77,7 @@ except GetActivityError as e:
 
 #### Get Details Profile Current Login
 
-```Python
+```python
   ProfileDetails = lmsm.get_profile()
 ```
 #### Output
@@ -70,8 +85,8 @@ except GetActivityError as e:
 
 #### Get Activity Task
 
-```Python
-  GetActivityTask = lmsm.Get_activity(end_time=30)
+```python
+  lmsm.Get_activity(end_time=30)
 ```
 
 | Parameter | Type     | Description                |
@@ -83,13 +98,29 @@ except GetActivityError as e:
 
 #### Get Course list 
 
-```Python
-  GetCourselist = lmsm.get_course()
+```python
+  lmsm.get_course()
 ```
 
 #### Output
 ![GetCourse](https://i.ibb.co/jTLvLm2/image.png)
 
+#### Send Notification to Telegram Message
+
+```python
+    lmsm.ScheduleTask(bot_token="", chat_id="", time_exec=120)
+```
+
+| Parameter | Type     | Description                |
+| :-------- | :------- | :------------------------- |
+| `bot_token` | `string` | **Required**. Your Bot Token Key |
+| `chat_id` | `string` | **Required**. Your Chat ID |
+| `time_exec` | `integer` | How many seconds is executed ( Default is 10 second ) |
+
+#### Output
+![GetActivity](https://i.ibb.co/wdG5Mmc/image.png)
+
+#### ❗️ Better to use at the end of all functions because it uses blocking scheduler
 # Screenshot
 
 ![GetProfile](https://i.ibb.co/XtpW3gM/image.png)
